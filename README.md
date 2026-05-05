@@ -96,11 +96,24 @@ mysql -u root -p -e "CREATE DATABASE videostore;"
 mysql -u root -p videostore < bases/videostore.sql
 ```
 
-### 2. GlassFish / Payara — JDBC and JMS resources
+### 2. Configure database credentials
+
+Database credentials are **placeholders** in the committed config files — you must replace `YOUR_DB_USER` and `YOUR_DB_PASSWORD` with your local MySQL credentials before the server or any subsystem can connect. The four files to edit:
+
+| File                                                              | Properties                                            |
+|-------------------------------------------------------------------|-------------------------------------------------------|
+| `java/Server/src/main/webapp/WEB-INF/glassfish-resources.xml`     | `User`, `Password`                                    |
+| `java/Subsystem11/src/conf/persistence.xml`                       | `javax.persistence.jdbc.user`, `...jdbc.password`     |
+| `java/Subsystem2/src/conf/persistence.xml`                        | same                                                  |
+| `java/Subsystem3/src/conf/persistence.xml`                        | same                                                  |
+
+Do not commit your real credentials — keep these placeholders in source control and apply the real values only to your local working copy (or override per-environment via your app server's admin console).
+
+### 3. GlassFish / Payara — JDBC and JMS resources
 
 The server expects:
 
-- **JDBC**: a JDBC resource bound to JNDI name `java:app/project` pointing at the `videostore` MySQL database. A reference pool definition is provided in `java/Server/src/main/webapp/WEB-INF/glassfish-resources.xml`. **Update the `User` and `Password` properties to match your local MySQL install before deploying** — do not reuse the credentials in the file.
+- **JDBC**: a JDBC resource bound to JNDI name `java:app/project` pointing at the `videostore` MySQL database. The reference pool definition is in `java/Server/src/main/webapp/WEB-INF/glassfish-resources.xml` (with placeholders, see step 2).
 - **JMS queues**: `queue1`, `queue2`, `queue3`, `queueServer`, all backed by the default connection factory `jms/__defaultConnectionFactory`.
 
 Create the JMS queues, e.g.:
@@ -112,7 +125,7 @@ asadmin create-jms-resource --restype javax.jms.Queue --property Name=queue3 que
 asadmin create-jms-resource --restype javax.jms.Queue --property Name=queueServer queueServer
 ```
 
-### 3. Build and deploy the server
+### 4. Build and deploy the server
 
 ```bash
 cd java/Server
@@ -122,13 +135,13 @@ asadmin deploy target/Server-1.0-SNAPSHOT.war
 
 The REST API is then available at `http://localhost:8080/Server/`.
 
-### 4. Run the subsystems
+### 5. Run the subsystems
 
 Each subsystem is a NetBeans Java EE application client. Open `java/Subsystem11`, `java/Subsystem2`, `java/Subsystem3` in NetBeans and run the main class (`subsystem11.Subsystem1`, `subsystem2.Subsystem2`, `subsystem3.Subsystem3`). Each subsystem connects to the GlassFish JMS broker, drains its inbound queue on startup, then waits for new commands.
 
 All three subsystems must be running for the server to handle requests end-to-end.
 
-### 5. Run the client
+### 6. Run the client
 
 ```bash
 cd java/Client
@@ -148,5 +161,4 @@ A numbered menu appears in the terminal — pick an item to invoke the matching 
 
 ## Notes
 
-- This project was originally generated against NetBeans templates; some files (and the Subsystem build tooling) still reflect that. The Server and Client modules are imported into IntelliJ via their `pom.xml`.
-- Database credentials in `glassfish-resources.xml` are placeholders intended to be overridden per environment. Treat any value committed there as **not** a production secret.
+This project was originally generated against NetBeans templates; some files (and the Subsystem build tooling) still reflect that. The Server and Client modules are imported into IntelliJ via their `pom.xml`.
